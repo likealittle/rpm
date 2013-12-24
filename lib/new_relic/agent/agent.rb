@@ -36,9 +36,7 @@ module NewRelic
       def initialize
         # FIXME: temporary work around for RUBY-839
         # This should be handled with a configuration callback
-        if Agent.config[:monitor_mode]
-          @service = NewRelic::Agent::NewRelicService.new
-        end
+        init_service
 
         @events                = NewRelic::Agent::EventListener.new
         @stats_engine          = NewRelic::Agent::StatsEngine.new
@@ -59,6 +57,12 @@ module NewRelic
 
         @harvest_lock = Mutex.new
         @obfuscator = lambda {|sql| NewRelic::Agent::Database.default_sql_obfuscator(sql) }
+      end
+
+      def init_service
+        if Agent.config[:monitor_mode]
+          @service ||= NewRelic::Agent::NewRelicService.new
+        end
       end
 
       # contains all the class-level methods for NewRelic::Agent::Agent
@@ -465,6 +469,7 @@ module NewRelic
             return unless monitoring? && has_correct_license_key?
             return if using_forking_dispatcher?
             generate_environment_report
+            init_service
             connect_in_foreground if Agent.config[:sync_startup]
             start_worker_thread
             install_exit_handler
